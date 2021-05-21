@@ -18,10 +18,10 @@ class UsernamePasswordInput {
   @Field()
   email: string;
 
-  @Field({nullable: true})
-  firstName?: string; 
+  @Field({ nullable: true })
+  firstName?: string;
 
-  @Field({nullable: true})
+  @Field({ nullable: true })
   lastName?: string;
 
   @Field()
@@ -38,7 +38,8 @@ class FieldError {
 }
 
 function validateEmail(email: string): boolean {
-  const re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+  const re =
+    /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
   return re.test(email);
 }
 
@@ -90,7 +91,7 @@ export class UserResolver {
           {
             field: "password",
             message:
-              "Passwords must be at least 8 characters lond and contain lowercase, uppercase, symbol and/or number",
+              "Passwords must be at least 8 characters and contain lowercase, uppercase, symbol and/or number",
           },
         ],
       };
@@ -107,7 +108,7 @@ export class UserResolver {
     try {
       await em.persistAndFlush(user);
     } catch (err) {
-      if (err.code === "23505" || err.detail.includes("already exists")) {
+      if ( err.detail.includes("already exists")) {
         return {
           errors: [
             {
@@ -134,7 +135,7 @@ export class UserResolver {
       return {
         errors: [
           {
-            field: "Email",
+            field: "email",
             message: "That Email is not registered.",
           },
         ],
@@ -146,7 +147,7 @@ export class UserResolver {
       return {
         errors: [
           {
-            field: "Password",
+            field: "password",
             message: "Invalid Login",
           },
         ],
