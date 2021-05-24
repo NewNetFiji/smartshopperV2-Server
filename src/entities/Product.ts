@@ -20,31 +20,31 @@ export class Product {
   @Property({ type: "text" })
   title!: string;
 
-  @Field()
+  @Field( { nullable: true })
   @Property({ type: "text", nullable: true })
   description?: string;
 
-  @Field(() => String)
+  @Field(() => String, { nullable: true })
   @Property({ type: "date", nullable: true })
   productAvailabileTo?: Date;
 
-  @Field(() => String)
+  @Field(() => String, { nullable: true })
   @Property({ type: "date", nullable: true })
   productAvailabileFrom?: Date;
 
-  @Field(() => Int)
+  @Field(() => Int, { nullable: true })
   @Property({ nullable: true })
   basePrice!: number;
 
-  @Field(() => Int)
+  @Field(() => Int , { nullable: true })
   @Property({ nullable: true })
   discount?: number;
 
-  @Field()
+  @Field({ nullable: true })
   @Property({ length: 255, nullable: true })
   image?: string;
 
-  @Field()
+  @Field({ nullable: true })
   @Property({ nullable: true })
   category?: string;
 
@@ -52,11 +52,11 @@ export class Product {
   @Property({ default: "Active" })
   status!: string;
 
-  @Field()
+  @Field({ nullable: true })
   @Property({ nullable: true })
   manufacturer?: string;
 
-  @Field()
+  @Field({ nullable: true })
   @Property({ type: "text", nullable: true })
   tags?: string;
 }
