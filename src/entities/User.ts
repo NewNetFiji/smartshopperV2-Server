@@ -1,42 +1,47 @@
-import { Entity, PrimaryKey, Property } from "@mikro-orm/core";
-import { Field, Int, ObjectType } from "type-graphql";
-
+import {
+  UpdateDateColumn,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  BaseEntity
+} from "typeorm";
+import { Field, ObjectType } from "type-graphql";
 @ObjectType()
 @Entity()
-export class User {
-  @Field(() => Int)
-  @PrimaryKey()
+export class User extends BaseEntity{
+  @Field()
+  @PrimaryGeneratedColumn()
   id!: number;
 
   @Field(() => String)
-  @Property({ type: "date" })
-  createdAt = new Date();
+  @CreateDateColumn()
+  createdAt: Date;
 
   @Field(() => String)
-  @Property({ type: "date", onUpdate: () => new Date() })
-  updatedAt = new Date();
+  @UpdateDateColumn()
+  updatedAt: Date;
 
   @Field()
-  @Property({ type: "text", unique: true })
+  @Column({ unique: true })
   email!: string;
-  
-  @Property({ type: "text" })
+
+  @Column()
   password!: string;
 
   @Field()
-  @Property({ type: "text", nullable: true })
+  @Column({ nullable: true })
   firstName?: string;
 
   @Field()
-  @Property({ type: "text" , nullable: true})
+  @Column({ nullable: true })
   lastName?: string;
 
   @Field()
-  @Property({ type: "text", default: 'nonAdmin' })
+  @Column({ default: "nonAdmin" })
   userRole?: string;
 
   @Field()
-  @Property({ type: "text", default: 'Active' })
+  @Column({ default: "Active" })
   status?: string;
-
 }

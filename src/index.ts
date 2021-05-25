@@ -11,11 +11,22 @@ import { UserResolver } from "./resolvers/user";
 import Redis from "ioredis";
 import session from "express-session";
 import connectRedis from "connect-redis";
-import { MyContext } from "./types";
 import cors from "cors";
+import {createConnection} from "typeorm"
+import {Product} from "../src/entities/Product"
+import {User} from "../src/entities/User"
 
 
 const main = async () => {
+  const conn = await createConnection({
+    type: "postgres",
+    database: "smartshopper2",
+    username: "postgres",
+    password: "sparhawk32",
+    logging: true,
+    synchronize: true,
+    entities: [Product, User]
+  })
   
   const orm = await MikroORM.init(mikroConfig);
   await orm.getMigrator().up();
@@ -56,7 +67,7 @@ const main = async () => {
       resolvers: [HelloResolver, ProductResolver, UserResolver],
       validate: false,
     }),
-    context: ({ req, res }): MyContext => ({ em: orm.em, req, res, redis }),
+    context: ({ req, res }) => ({ req, res, redis }),
   });
 
   apolloServer.applyMiddleware({

@@ -1,70 +1,69 @@
-import { Entity, PrimaryKey, Property } from "@mikro-orm/core";
-import { Field, Int, ObjectType } from "type-graphql";
-
+import { CreateDateColumn, UpdateDateColumn, Entity, PrimaryGeneratedColumn, Column, BaseEntity } from "typeorm";
+import { Field, ObjectType  } from "type-graphql";
 @ObjectType()
 @Entity()
-export class Product {
-  @Field(() => Int)
-  @PrimaryKey()
+export class Product extends BaseEntity {
+  @Field()
+  @PrimaryGeneratedColumn()
   id!: number;
 
   @Field(() => String)
-  @Property({ type: "date" })
-  createdAt = new Date();
+  @CreateDateColumn()
+  createdAt: Date;
 
   @Field(() => String)
-  @Property({ type: "date", onUpdate: () => new Date() })
-  updatedAt = new Date();
+  @UpdateDateColumn()
+  updatedAt: Date;
 
   @Field()
-  @Property({ type: "text" })
+  @Column()
   title!: string;
 
   @Field( { nullable: true })
-  @Property({ type: "text", nullable: true })
+  @Column({ nullable: true })
   description?: string;
 
   @Field(() => String, { nullable: true })
-  @Property({ type: "date", nullable: true })
+  @Column({ nullable: true })
   productAvailabileTo?: Date;
 
   @Field(() => String, { nullable: true })
-  @Property({ type: "date", nullable: true })
+  @Column({  nullable: true })
   productAvailabileFrom?: Date;
 
-  @Field(() => Int, { nullable: true })
-  @Property({ nullable: true })
+  @Field({ nullable: true })
+  @Column({ type: "decimal", nullable: true })
   basePrice!: number;
 
   @Field( { nullable: true })
-  @Property({ nullable: true })
+  @Column({ nullable: true })
   barcode?: string;
 
   @Field({ nullable: true })
-  @Property({ nullable: true })
+  @Column({ nullable: true })
   packSize: string;
 
-  @Field(() => Int , { nullable: true })
-  @Property({ nullable: true })
+  @Field( { nullable: true })
+  @Column({ type: "decimal", nullable: true })
   discount?: number;
 
   @Field({ nullable: true })
-  @Property({ length: 255, nullable: true })
+  @Column({ nullable: true })
   image?: string;
 
   @Field({ nullable: true })
-  @Property({ nullable: true })
+  @Column({ nullable: true })
   category?: string;
 
   @Field()
-  @Property({ default: "Active" })
+  @Column({ default: "Active" })
   status!: string;
 
   @Field({ nullable: true })
-  @Property({ nullable: true })
+  @Column({ nullable: true })
   manufacturer?: string;
 
   @Field({ nullable: true })
-  @Property({ type: "text", nullable: true })
+  @Column({ nullable: true })
   tags?: string;
 }

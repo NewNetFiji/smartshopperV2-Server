@@ -1,67 +1,60 @@
-import { Arg, Ctx, Int, Mutation, Query, Resolver } from "type-graphql";
+import { Arg, Int, Mutation, Query, Resolver } from "type-graphql";
 import { Product } from "../entities/Product";
-import { MyContext } from "../types";
 
 @Resolver()
 export class ProductResolver {
   @Query(() => [Product])
-  products(@Ctx() { em }: MyContext): Promise<Product[]> {
-    return em.find(Product, {});
+  async products(): Promise<Product[]> {
+    return Product.find();
   }
 
   @Query(() => Product, { nullable: true }) //graphql type
   product(
-    @Arg("id", () => Int) id: number,
-    @Ctx() { em }: MyContext
-  ): Promise<Product | null> {
+    @Arg("id", () => Int) id: number,    
+  ): Promise<Product | undefined> {
     // return type
-    return em.findOne(Product, { id });
+    return Product.findOne( id);
   }
 
   @Mutation(() => Product) //graphql type
   async createProduct(
-    @Arg("title") title: string,
-    @Ctx() { em }: MyContext
+    @Arg("title") title: string    
   ): Promise<Product> {
-    // return type
-    const product = em.create(Product, { title });
-    await em.persistAndFlush(product);
-    return product;
+    
+    return Product.create({title}).save();
   }
 
   @Mutation(() => Product, { nullable: true }) //graphql type
   async updateProduct(
     @Arg("id") id: number,
-    @Arg("title") title: string,
-    //@Arg('price', () => Number, {nullable: true} ) price: number
-    @Ctx() { em }: MyContext
+    @Arg("product") product: Product
+    
+    
   ): Promise<Product | null> {
     // return type typescript
-    const prod = await em.findOne(Product, { id });
+    const prod = await Product.findOne( id );
     if (!prod) {
       return null;
     }
-    if (typeof title !== undefined) {
-      prod.title = title;
-      await em.persistAndFlush(prod);
+    if (typeof product !== undefined) {      
+      Product.update(id, product);
     } else {
       return null;
     }
-    return prod;
+    return product;
   }
 
   @Mutation(() => Boolean, { nullable: true }) //graphql type
   async deleteProduct(
-    @Arg("id") id: number,
-    @Ctx() { em }: MyContext
+    @Arg("id") id: number,    
   ): Promise<Boolean> {
     // return type typescript
-    const prod = await em.findOne(Product, { id });
+    const prod = await Product.findOne( id );
     if (!prod) {
       return false;
     } else {
       prod.status = "Deleted";
-      await em.persistAndFlush(prod);
+      await Product.update(id, prod)
       return true;
     }
   }
