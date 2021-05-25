@@ -36,6 +36,14 @@ export class Product {
   @Property({ nullable: true })
   basePrice!: number;
 
+  @Field( { nullable: true })
+  @Property({ nullable: true })
+  barcode?: string;
+
+  @Field({ nullable: true })
+  @Property({ nullable: true })
+  packSize: string;
+
   @Field(() => Int , { nullable: true })
   @Property({ nullable: true })
   discount?: number;
