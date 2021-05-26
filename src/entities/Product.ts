@@ -1,5 +1,12 @@
-import { CreateDateColumn, UpdateDateColumn, Entity, PrimaryGeneratedColumn, Column, BaseEntity } from "typeorm";
-import { Field, ObjectType  } from "type-graphql";
+import {
+  CreateDateColumn,
+  UpdateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  BaseEntity,
+} from "typeorm";
+import { Field, ObjectType } from "type-graphql";
 @ObjectType()
 @Entity()
 export class Product extends BaseEntity {
@@ -19,7 +26,7 @@ export class Product extends BaseEntity {
   @Column()
   title!: string;
 
-  @Field( { nullable: true })
+  @Field({ nullable: true })
   @Column({ nullable: true })
   description?: string;
 
@@ -28,14 +35,14 @@ export class Product extends BaseEntity {
   productAvailabileTo?: Date;
 
   @Field(() => String, { nullable: true })
-  @Column({  nullable: true })
+  @Column({ nullable: true })
   productAvailabileFrom?: Date;
 
   @Field({ nullable: true })
   @Column({ type: "decimal", nullable: true })
   basePrice!: number;
 
-  @Field( { nullable: true })
+  @Field({ nullable: true })
   @Column({ nullable: true })
   barcode?: string;
 
@@ -43,7 +50,7 @@ export class Product extends BaseEntity {
   @Column({ nullable: true })
   packSize: string;
 
-  @Field( { nullable: true })
+  @Field({ nullable: true })
   @Column({ type: "decimal", nullable: true })
   discount?: number;
 

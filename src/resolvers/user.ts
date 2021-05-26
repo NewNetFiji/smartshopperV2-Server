@@ -15,6 +15,7 @@ import { passwordStrength } from "check-password-strength";
 import { COOKIE_NAME, FORGET_PASSWORD_PREFIX } from "../constants";
 import { sendEmail } from "../utils/sendEmail";
 import { v4 } from "uuid";
+import { validateEmail } from "../utils/validateEmail";
 
 @InputType()
 class UsernamePasswordInput {
@@ -39,13 +40,6 @@ class FieldError {
   @Field()
   message: string;
 }
-
-function validateEmail(email: string): boolean {
-  const re =
-    /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-  return re.test(email);
-}
-
 @ObjectType()
 class UserResponse {
   @Field(() => [FieldError], { nullable: true })

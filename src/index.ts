@@ -1,20 +1,18 @@
-import "reflect-metadata";
-import { MikroORM } from "@mikro-orm/core";
-import { COOKIE_NAME, __prod__ } from "./constants";
-import mikroConfig from "./mikro-orm.config";
-import express from "express";
 import { ApolloServer } from "apollo-server-express";
+import connectRedis from "connect-redis";
+import cors from "cors";
+import express from "express";
+import session from "express-session";
+import Redis from "ioredis";
+import "reflect-metadata";
 import { buildSchema } from "type-graphql";
+import { createConnection } from "typeorm";
+import { Product } from "./entities/Product";
+import { User } from "./entities/User";
+import { COOKIE_NAME, __prod__ } from "./constants";
 import { HelloResolver } from "./resolvers/hello";
 import { ProductResolver } from "./resolvers/product";
 import { UserResolver } from "./resolvers/user";
-import Redis from "ioredis";
-import session from "express-session";
-import connectRedis from "connect-redis";
-import cors from "cors";
-import {createConnection} from "typeorm"
-import {Product} from "../src/entities/Product"
-import {User} from "../src/entities/User"
 
 
 const main = async () => {
@@ -25,12 +23,9 @@ const main = async () => {
     password: "sparhawk32",
     logging: true,
     synchronize: true,
-    entities: [Product, User]
-  })
+    entities: [Product, User],
+  })  
   
-  const orm = await MikroORM.init(mikroConfig);
-  await orm.getMigrator().up();
-
   const app = express();
 
   const RedisStore = connectRedis(session);
