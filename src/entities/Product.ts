@@ -5,26 +5,24 @@ import {
   PrimaryGeneratedColumn,
   Column,
   BaseEntity,
+  ManyToOne,
 } from "typeorm";
 import { Field, ObjectType } from "type-graphql";
+import { Vendor } from "./Vendor";
 @ObjectType()
 @Entity()
 export class Product extends BaseEntity {
   @Field()
   @PrimaryGeneratedColumn()
-  id!: number;
-
-  @Field(() => String)
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @Field(() => String)
-  @UpdateDateColumn()
-  updatedAt: Date;
+  id!: number;  
 
   @Field()
   @Column()
   title!: string;
+
+  @Field()
+  @Column({type: "int", default: 0})
+  points!: number;
 
   @Field({ nullable: true })
   @Column({ nullable: true })
@@ -73,4 +71,19 @@ export class Product extends BaseEntity {
   @Field({ nullable: true })
   @Column({ nullable: true })
   tags?: string;
+
+  @Field()
+  @Column()
+  vendorId?: number;
+
+  @ManyToOne(() => Vendor, vendor => vendor.products)
+  vendor: Vendor;
+
+  @Field(() => String)
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @Field(() => String)
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

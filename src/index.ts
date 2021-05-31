@@ -12,7 +12,9 @@ import { User } from "./entities/User";
 import { COOKIE_NAME, __prod__ } from "./constants";
 import { HelloResolver } from "./resolvers/hello";
 import { ProductResolver } from "./resolvers/product";
+import { VendorResolver } from "./resolvers/vendor";
 import { UserResolver } from "./resolvers/user";
+import { Vendor } from "./entities/Vendor";
 
 
 const main = async () => {
@@ -23,7 +25,7 @@ const main = async () => {
     password: "sparhawk32",
     logging: true,
     synchronize: true,
-    entities: [Product, User],
+    entities: [Product, User, Vendor],
   })  
   
   const app = express();
@@ -59,7 +61,7 @@ const main = async () => {
 
   const apolloServer = new ApolloServer({
     schema: await buildSchema({
-      resolvers: [HelloResolver, ProductResolver, UserResolver],
+      resolvers: [HelloResolver, ProductResolver, UserResolver, VendorResolver],
       validate: false,
     }),
     context: ({ req, res }) => ({ req, res, redis }),

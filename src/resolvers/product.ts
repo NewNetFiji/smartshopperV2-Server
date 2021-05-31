@@ -1,5 +1,6 @@
 import {
   Arg,
+  Ctx,
   Field,
   InputType,
   Int,
@@ -7,9 +8,13 @@ import {
   ObjectType,
   Query,
   Resolver,
+  UseMiddleware,
 } from "type-graphql";
 import { getRepository } from "typeorm";
 import { Product } from "../entities/Product";
+import { isAuth } from "../middleware/isAuth";
+import { MyContext } from "../types";
+import { FieldError } from "./FieldError";
 
 @InputType()
 class ProductInput {
@@ -60,21 +65,15 @@ class ProductInput {
 
   @Field({ nullable: true })
   tags?: string;
-}
 
-@ObjectType()
-class ProdError {
-  @Field()
-  field: string;
-
-  @Field()
-  message: string;
+  @Field({ nullable: true })
+  vendorId: number;
 }
 
 @ObjectType()
 class ProductResponse {
-  @Field(() => [ProdError], { nullable: true })
-  errors?: ProdError[];
+  @Field(() => [FieldError], { nullable: true })
+  errors?: FieldError[];
 
   @Field(() => Product, { nullable: true })
   product?: Product;
@@ -93,9 +92,25 @@ export class ProductResolver {
   }
 
   @Mutation(() => ProductResponse) //graphql type
+  @UseMiddleware(isAuth)
   async createProduct(
-    @Arg("options", () => ProductInput) options: ProductInput
+    @Arg("options", () => ProductInput) options: ProductInput,
+    @Ctx() { req }: MyContext
   ): Promise<ProductResponse> {
+
+    
+
+    if (!options.vendorId) {
+      return {
+        errors: [
+          {
+            field: "vendorId",
+            message: "A valid vendor Id must be supplied",
+          },
+        ],
+      };
+    }
+
     const product = await Product.create({
       title: options.title,
       description: options.description,

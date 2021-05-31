@@ -16,6 +16,7 @@ import { COOKIE_NAME, FORGET_PASSWORD_PREFIX } from "../constants";
 import { sendEmail } from "../utils/sendEmail";
 import { v4 } from "uuid";
 import { validateEmail } from "../utils/validateEmail";
+import { FieldError } from "./FieldError";
 
 @InputType()
 class UsernamePasswordInput {
@@ -30,16 +31,11 @@ class UsernamePasswordInput {
 
   @Field()
   password: string;
+
+  @Field({ nullable: true })
+  vendorId: number;
 }
 
-@ObjectType()
-class FieldError {
-  @Field()
-  field: string;
-
-  @Field()
-  message: string;
-}
 @ObjectType()
 class UserResponse {
   @Field(() => [FieldError], { nullable: true })
@@ -114,6 +110,7 @@ export class UserResolver {
 
     //log in the user after succesful password change
     req.session!.userId = user.id;
+    req.session!.vendorId = user.vendorId;
 
     return { user };
   }
@@ -163,8 +160,21 @@ export class UserResolver {
 
   @Mutation(() => UserResponse)
   async register(
-    @Arg("options", () => UsernamePasswordInput) options: UsernamePasswordInput,    
+    @Arg("options", () => UsernamePasswordInput) options: UsernamePasswordInput,
+    @Ctx() { req }: MyContext    
   ): Promise<UserResponse> {
+    
+    if (!options.vendorId) {
+      return {
+        errors: [
+          {
+            field: "vendorId",
+            message: "A valid vendor Id must be supplied",
+          },
+        ],
+      };
+    }
+
     if (!validateEmail(options.email)) {
       return {
         errors: [
@@ -194,6 +204,7 @@ export class UserResolver {
       firstName: options.firstName,
       lastName: options.lastName,
       password: hashedPassword,
+      vendorId: options.vendorId
     });
 
     try {
@@ -211,6 +222,8 @@ export class UserResolver {
       }
       console.error("Error Message: ", err.message);
     }
+    req.session!.userId = user.id;
+    req.session!.vendorId = user.vendorId;
     return { user };
   }
 
@@ -246,6 +259,7 @@ export class UserResolver {
     }
 
     req.session!.userId = user.id;
+    req.session!.vendorId = user.vendorId;
 
     return { user };
   }
@@ -263,5 +277,17 @@ export class UserResolver {
         resolve(true);
       })
     );
+  }
+
+  @Mutation(() => Boolean, { nullable: true })
+  async deleteUser(@Arg("id") id: number): Promise<Boolean> {
+    const user = await User.findOne(id);
+    if (!user) {
+      return false;
+    } else {
+      user.status = "Deleted";
+      await User.save(user);
+      return true;
+    }
   }
 }

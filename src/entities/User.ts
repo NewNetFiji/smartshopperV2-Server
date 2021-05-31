@@ -4,9 +4,12 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  BaseEntity
+  BaseEntity,
+  ManyToOne
 } from "typeorm";
 import { Field, ObjectType } from "type-graphql";
+import { Vendor } from "./Vendor";
+
 @ObjectType()
 @Entity()
 export class User extends BaseEntity{
@@ -44,4 +47,11 @@ export class User extends BaseEntity{
   @Field()
   @Column({ default: "Active" })
   status?: string;
+
+  @Field()
+  @Column()
+  vendorId?: number;
+
+  @ManyToOne(() => Vendor, (vendor) => vendor.users)
+  vendor: Vendor;
 }
