@@ -15,6 +15,8 @@ import { ProductResolver } from "./resolvers/product";
 import { VendorResolver } from "./resolvers/vendor";
 import { UserResolver } from "./resolvers/user";
 import { Vendor } from "./entities/Vendor";
+import { Image } from "./entities/Image";
+import { ImageResolver } from "./resolvers/image";
 
 
 const main = async () => {
@@ -25,7 +27,7 @@ const main = async () => {
     password: "sparhawk32",
     logging: true,
     synchronize: true,
-    entities: [Product, User, Vendor],
+    entities: [Product, User, Vendor, Image],
   })  
   
   const app = express();
@@ -61,7 +63,7 @@ const main = async () => {
 
   const apolloServer = new ApolloServer({
     schema: await buildSchema({
-      resolvers: [HelloResolver, ProductResolver, UserResolver, VendorResolver],
+      resolvers: [HelloResolver, ProductResolver, UserResolver, VendorResolver, ImageResolver],
       validate: false,
     }),
     context: ({ req, res }) => ({ req, res, redis }),

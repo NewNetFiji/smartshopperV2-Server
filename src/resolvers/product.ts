@@ -1,6 +1,5 @@
 import {
   Arg,
-  Ctx,
   Field,
   InputType,
   Int,
@@ -12,8 +11,8 @@ import {
 } from "type-graphql";
 import { getRepository } from "typeorm";
 import { Product } from "../entities/Product";
+import { Image } from "../entities/Image";
 import { isAuth } from "../middleware/isAuth";
-import { MyContext } from "../types";
 import { FieldError } from "./FieldError";
 
 @InputType()
@@ -21,17 +20,14 @@ class ProductInput {
   @Field({ nullable: true })
   id?: number;
 
-  @Field(() => String, { nullable: true })
-  createdAt: Date;
-
-  @Field(() => String, { nullable: true })
-  updatedAt: Date;
-
   @Field({ nullable: true })
   title!: string;
 
   @Field({ nullable: true })
   description?: string;
+
+  @Field(() => [String], { nullable: true })
+  images?: [string];
 
   @Field(() => String, { nullable: true })
   productAvailabileTo?: Date;
@@ -52,9 +48,6 @@ class ProductInput {
   discount?: number;
 
   @Field({ nullable: true })
-  image?: string;
-
-  @Field({ nullable: true })
   category?: string;
 
   @Field({ nullable: true })
@@ -68,6 +61,12 @@ class ProductInput {
 
   @Field({ nullable: true })
   vendorId: number;
+
+  @Field(() => String, { nullable: true })
+  createdAt: Date;
+
+  @Field(() => String, { nullable: true })
+  updatedAt: Date;
 }
 
 @ObjectType()
@@ -77,29 +76,40 @@ class ProductResponse {
 
   @Field(() => Product, { nullable: true })
   product?: Product;
+
+  @Field(() => [Image], { nullable: true })
+  images?: Image[];
+}
+
+@ObjectType()
+class MultipleProductResponse {  
+  @Field(() => [ProductResponse], { nullable: true })
+  products?: ProductResponse[];
 }
 
 @Resolver()
 export class ProductResolver {
   @Query(() => [Product])
-  async products(): Promise<Product[]> {
-    return Product.find();
+  async products(    
+    @Arg("vendorId", { nullable: true }) vendorId?: number
+  ): Promise<Product[]> {
+    if (vendorId){
+      return await Product.find({vendorId: vendorId});
+    }else{
+      return await Product.find();
+    }
   }
 
   @Query(() => Product, { nullable: true }) //graphql type
-  product(@Arg("id", () => Int) id: number): Promise<Product | undefined> {    
+  product(@Arg("id", () => Int) id: number): Promise<Product | undefined> {
     return Product.findOne(id);
   }
 
   @Mutation(() => ProductResponse) //graphql type
   @UseMiddleware(isAuth)
   async createProduct(
-    @Arg("options", () => ProductInput) options: ProductInput,
-    @Ctx() { req }: MyContext
+    @Arg("options", () => ProductInput) options: ProductInput
   ): Promise<ProductResponse> {
-
-    
-
     if (!options.vendorId) {
       return {
         errors: [
@@ -120,14 +130,44 @@ export class ProductResolver {
       barcode: options.barcode,
       packSize: options.packSize,
       discount: options.discount,
-      image: options.image,
       category: options.category,
       status: options.status,
       manufacturer: options.manufacturer,
       tags: options.tags,
+      vendorId: options.vendorId
     }).save();
 
-    return { product };
+    console.log(product);
+
+    if (!product) {
+      return {
+        errors: [
+          {
+            field: "title",
+            message: "Error Creating Product. Error Code: 420",
+          },
+        ],
+      };
+    }
+
+    if (options.images && options.images?.length > 0) {
+      console.log("INside");
+      const saveImages = async () => {
+        return Promise.all(
+          options.images!.map((image) => {
+            Image.create({ productId: product.id, url: image }).save();
+          })
+        );
+      };
+      saveImages().then((images) => {
+        //product.save();
+        return { product, images };
+      });
+    }
+
+    return { product};
+
+    //return { product };
   }
 
   @Mutation(() => ProductResponse, { nullable: true }) //graphql type
@@ -149,13 +189,15 @@ export class ProductResolver {
 
     product.title = options.title || product.title;
     product.description = options.description || product.description;
-    product.productAvailabileTo = options.productAvailabileTo || product.productAvailabileTo;
-    product.productAvailabileFrom = options.productAvailabileFrom || product.productAvailabileFrom;
+    product.productAvailabileTo =
+      options.productAvailabileTo || product.productAvailabileTo;
+    product.productAvailabileFrom =
+      options.productAvailabileFrom || product.productAvailabileFrom;
     product.basePrice = options.basePrice || product.basePrice;
     product.barcode = options.barcode || product.barcode;
     product.packSize = options.packSize || product.packSize;
     product.discount = options.discount || product.discount;
-    product.image = options.image || product.image;
+
     product.category = options.category || product.category;
     product.status = options.status || product.status;
     product.manufacturer = options.manufacturer || product.manufacturer;
