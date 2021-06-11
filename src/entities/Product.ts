@@ -32,11 +32,11 @@ export class Product extends BaseEntity {
 
   @Field(() => String, { nullable: true })
   @Column({ nullable: true })
-  productAvailabileTo?: Date;
+  productAvailableTo?: Date;
 
   @Field(() => String, { nullable: true })
   @Column({ nullable: true })
-  productAvailabileFrom?: Date;
+  productAvailableFrom?: Date;
 
   @Field({ nullable: true })
   @Column({ type: "decimal", nullable: true })
@@ -74,13 +74,15 @@ export class Product extends BaseEntity {
   @Column()
   vendorId?: number;
 
+  @Field(() => Vendor)
   @ManyToOne(() => Vendor, (vendor) => vendor.products)
   vendor: Vendor;
 
+  @Field(() => [Image], {nullable: true})
   @OneToMany(() => Image, (image) => image.product, {
     cascade: true,
   })
-  images: Image[];
+  images?: Image[];
 
   @Field(() => String)
   @CreateDateColumn()

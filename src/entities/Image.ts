@@ -13,15 +13,15 @@ import { Product } from "./Product";
 @ObjectType()
 @Entity()
 export class Image extends BaseEntity {
-  @Field()
+  @Field({nullable: true})
   @PrimaryGeneratedColumn()
   id!: number;
 
-  @Field()
+  @Field({nullable: true})
   @Column({ unique: true })
   url!: string;
 
-  @Field()
+  @Field({nullable: true})
   @Column()
   productId?: number;
 
@@ -30,11 +30,11 @@ export class Image extends BaseEntity {
 })
   product: Product;
 
-  @Field(() => String)
+  @Field(() => String, {nullable: true})
   @CreateDateColumn()
   createdAt: Date;
 
-  @Field(() => String)
+  @Field(() => String, {nullable: true})
   @UpdateDateColumn()
   updatedAt: Date;
 }

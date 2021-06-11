@@ -7,13 +7,14 @@ import {
   ObjectType,
   Query,
   Resolver,
-  UseMiddleware,
+  UseMiddleware
 } from "type-graphql";
-import { getRepository } from "typeorm";
-import { Product } from "../entities/Product";
+import { getConnection, getRepository } from "typeorm";
 import { Image } from "../entities/Image";
+import { Product } from "../entities/Product";
 import { isAuth } from "../middleware/isAuth";
 import { FieldError } from "./FieldError";
+
 
 @InputType()
 class ProductInput {
@@ -27,13 +28,13 @@ class ProductInput {
   description?: string;
 
   @Field(() => [String], { nullable: true })
-  images?: [string];
+  imageUrl?: [string];
 
   @Field(() => String, { nullable: true })
-  productAvailabileTo?: Date;
+  productAvailableTo?: Date;
 
   @Field(() => String, { nullable: true })
-  productAvailabileFrom?: Date;
+  productAvailableFrom?: Date;
 
   @Field({ nullable: true })
   basePrice?: number;
@@ -61,7 +62,7 @@ class ProductInput {
 
   @Field({ nullable: true })
   vendorId: number;
-
+  
   @Field(() => String, { nullable: true })
   createdAt: Date;
 
@@ -81,23 +82,65 @@ class ProductResponse {
   images?: Image[];
 }
 
-@ObjectType()
-class MultipleProductResponse {  
-  @Field(() => [ProductResponse], { nullable: true })
-  products?: ProductResponse[];
-}
-
 @Resolver()
 export class ProductResolver {
+  
   @Query(() => [Product])
-  async products(    
-    @Arg("vendorId", { nullable: true }) vendorId?: number
+  async fullProducts(
+    @Arg("limit", ()=> Int) limit: number,
+    @Arg("cursor", () => String, { nullable: true }) cursor: string | null,
+    @Arg("vendorId",() => Int, { nullable: true }) vendorId?: number
   ): Promise<Product[]> {
-    if (vendorId){
-      return await Product.find({vendorId: vendorId});
-    }else{
-      return await Product.find();
+    const realLimit = Math.min(50, limit);
+
+    const qb = getConnection()
+      .getRepository(Product)
+      .createQueryBuilder("products")
+      .leftJoinAndSelect('products.images', 'image')
+      .leftJoinAndSelect('products.vendor', 'vendor')
+      //.orderBy('products."createdAt"', "DESC")
+      .take(realLimit);
+    if (vendorId && cursor) {
+      qb.where('products."vendorId" = :vendorId', { vendorId: vendorId });
+      qb.andWhere('products."createdAt" < :cursor', {
+        cursor: new Date(parseInt(cursor)),
+      });
+    } else if (cursor) {
+      qb.where('products."createdAt" < :cursor', { cursor: new Date(parseInt(cursor)) });
+    } else if (vendorId) {
+      qb.where('products."vendorId" = :vendorId', { vendorId: vendorId });
     }
+
+    return qb.getMany();
+  }
+  
+  
+  
+  @Query(() => [Product])
+  async products(
+    @Arg("limit", ()=> Int) limit: number,
+    @Arg("cursor", () => String, { nullable: true }) cursor: string | null,
+    @Arg("vendorId",() => Int, { nullable: true }) vendorId?: number
+  ): Promise<Product[]> {
+    const realLimit = Math.min(50, limit);
+
+    const qb = getConnection()
+      .getRepository(Product)
+      .createQueryBuilder("products")
+      .orderBy('"createdAt"', "DESC")
+      .take(realLimit);
+    if (vendorId && cursor) {
+      qb.where('"vendorId" = :vendorId', { vendorId: vendorId });
+      qb.andWhere('"createdAt" < :cursor', {
+        cursor: new Date(parseInt(cursor)),
+      });
+    } else if (cursor) {
+      qb.where('"createdAt" < :cursor', { cursor: new Date(parseInt(cursor)) });
+    } else if (vendorId) {
+      qb.where('"vendorId" = :vendorId', { vendorId: vendorId });
+    }
+
+    return qb.getMany();
   }
 
   @Query(() => Product, { nullable: true }) //graphql type
@@ -124,8 +167,8 @@ export class ProductResolver {
     const product = await Product.create({
       title: options.title,
       description: options.description,
-      productAvailabileTo: options.productAvailabileTo,
-      productAvailabileFrom: options.productAvailabileFrom,
+      productAvailableTo: options.productAvailableTo,
+      productAvailableFrom: options.productAvailableFrom,
       basePrice: options.basePrice,
       barcode: options.barcode,
       packSize: options.packSize,
@@ -134,7 +177,7 @@ export class ProductResolver {
       status: options.status,
       manufacturer: options.manufacturer,
       tags: options.tags,
-      vendorId: options.vendorId
+      vendorId: options.vendorId,
     }).save();
 
     console.log(product);
@@ -150,22 +193,20 @@ export class ProductResolver {
       };
     }
 
-    if (options.images && options.images?.length > 0) {
-      console.log("INside");
+    if (options.imageUrl && options.imageUrl?.length > 0) {      
       const saveImages = async () => {
         return Promise.all(
-          options.images!.map((image) => {
-            Image.create({ productId: product.id, url: image }).save();
+          options.imageUrl!.map((url) => {
+            Image.create({ productId: product.id, url: url }).save();
           })
         );
       };
-      saveImages().then((images) => {
-        //product.save();
+      saveImages().then((images) => {        
         return { product, images };
       });
     }
 
-    return { product};
+    return { product };
 
     //return { product };
   }
@@ -189,10 +230,10 @@ export class ProductResolver {
 
     product.title = options.title || product.title;
     product.description = options.description || product.description;
-    product.productAvailabileTo =
-      options.productAvailabileTo || product.productAvailabileTo;
-    product.productAvailabileFrom =
-      options.productAvailabileFrom || product.productAvailabileFrom;
+    product.productAvailableTo =
+      options.productAvailableTo || product.productAvailableTo;
+    product.productAvailableFrom =
+      options.productAvailableFrom || product.productAvailableFrom;
     product.basePrice = options.basePrice || product.basePrice;
     product.barcode = options.barcode || product.barcode;
     product.packSize = options.packSize || product.packSize;
