@@ -7,14 +7,13 @@ import {
   ObjectType,
   Query,
   Resolver,
-  UseMiddleware
+  UseMiddleware,
 } from "type-graphql";
 import { getConnection, getRepository } from "typeorm";
 import { Image } from "../entities/Image";
 import { Product } from "../entities/Product";
 import { isAuth } from "../middleware/isAuth";
 import { FieldError } from "./FieldError";
-
 
 @InputType()
 class ProductInput {
@@ -62,7 +61,7 @@ class ProductInput {
 
   @Field({ nullable: true })
   vendorId: number;
-  
+
   @Field(() => String, { nullable: true })
   createdAt: Date;
 
@@ -84,43 +83,58 @@ class ProductResponse {
 
 @Resolver()
 export class ProductResolver {
-  
+  @Query(() => Int)
+  async countProducts(): Promise<Number> {
+    const {count} = await getConnection()
+      .getRepository(Product)
+      .createQueryBuilder("products")
+      .select("count(*)", "count")
+      .getRawOne();      
+
+      if (count){
+        return count
+      }
+
+    return 0;
+  }
+
   @Query(() => [Product])
   async fullProducts(
-    @Arg("limit", ()=> Int) limit: number,
+    @Arg("limit", () => Int) limit: number,
     @Arg("cursor", () => String, { nullable: true }) cursor: string | null,
-    @Arg("vendorId",() => Int, { nullable: true }) vendorId?: number
+    @Arg("vendorId", () => Int, { nullable: true }) vendorId?: number
   ): Promise<Product[]> {
     const realLimit = Math.min(50, limit);
 
     const qb = getConnection()
       .getRepository(Product)
-      .createQueryBuilder("products")
-      .leftJoinAndSelect('products.images', 'image')
-      .leftJoinAndSelect('products.vendor', 'vendor')
-      //.orderBy('products."createdAt"', "DESC")
-      .take(realLimit);
+      .createQueryBuilder("p")
+      .leftJoinAndSelect("p.images", "image")
+      .leftJoinAndSelect("p.vendor", "vendor")
+      .orderBy("p.\"createdAt\"", "DESC")
+      .limit(realLimit)
+      .where("p.status = 'Active'");
     if (vendorId && cursor) {
-      qb.where('products."vendorId" = :vendorId', { vendorId: vendorId });
-      qb.andWhere('products."createdAt" < :cursor', {
+      qb.where('p."vendorId" = :vendorId', { vendorId: vendorId });
+      qb.andWhere('p."createdAt" < :cursor', {
         cursor: new Date(parseInt(cursor)),
       });
     } else if (cursor) {
-      qb.where('products."createdAt" < :cursor', { cursor: new Date(parseInt(cursor)) });
+      qb.where('p."createdAt" < :cursor', {
+        cursor: new Date(parseInt(cursor)),
+      });
     } else if (vendorId) {
-      qb.where('products."vendorId" = :vendorId', { vendorId: vendorId });
+      qb.where('p."vendorId" = :vendorId', { vendorId: vendorId });
     }
 
     return qb.getMany();
   }
-  
-  
-  
+
   @Query(() => [Product])
   async products(
-    @Arg("limit", ()=> Int) limit: number,
+    @Arg("limit", () => Int) limit: number,
     @Arg("cursor", () => String, { nullable: true }) cursor: string | null,
-    @Arg("vendorId",() => Int, { nullable: true }) vendorId?: number
+    @Arg("vendorId", () => Int, { nullable: true }) vendorId?: number
   ): Promise<Product[]> {
     const realLimit = Math.min(50, limit);
 
@@ -193,7 +207,7 @@ export class ProductResolver {
       };
     }
 
-    if (options.imageUrl && options.imageUrl?.length > 0) {      
+    if (options.imageUrl && options.imageUrl?.length > 0) {
       const saveImages = async () => {
         return Promise.all(
           options.imageUrl!.map((url) => {
@@ -201,7 +215,7 @@ export class ProductResolver {
           })
         );
       };
-      saveImages().then((images) => {        
+      saveImages().then((images) => {
         return { product, images };
       });
     }
