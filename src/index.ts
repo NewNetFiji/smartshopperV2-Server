@@ -17,6 +17,7 @@ import { UserResolver } from "./resolvers/user";
 import { Vendor } from "./entities/Vendor";
 import { Image } from "./entities/Image";
 import { ImageResolver } from "./resolvers/image";
+import { Upboat } from "./entities/Upboat";
 
 
 const main = async () => {
@@ -27,7 +28,7 @@ const main = async () => {
     password: "sparhawk32",
     logging: true,
     synchronize: true,
-    entities: [Product, User, Vendor, Image],
+    entities: [Product, User, Vendor, Image, Upboat],
   })  
   
   const app = express();

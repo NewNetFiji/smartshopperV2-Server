@@ -1,5 +1,6 @@
 import {
   Arg,
+  Ctx,
   Field,
   InputType,
   Int,
@@ -12,7 +13,9 @@ import {
 import { getConnection, getRepository } from "typeorm";
 import { Image } from "../entities/Image";
 import { Product } from "../entities/Product";
+import { Upboat } from "../entities/Upboat";
 import { isAuth } from "../middleware/isAuth";
+import { MyContext } from "../types";
 import { FieldError } from "./FieldError";
 
 @InputType()
@@ -70,6 +73,15 @@ class ProductInput {
 }
 
 @ObjectType()
+class PaginatedProducts {
+  @Field()
+  hasMore: boolean;
+
+  @Field(() => [Product])
+  products: Product[];
+}
+
+@ObjectType()
 class ProductResponse {
   @Field(() => [FieldError], { nullable: true })
   errors?: FieldError[];
@@ -83,19 +95,156 @@ class ProductResponse {
 
 @Resolver()
 export class ProductResolver {
+  @Mutation(() => Boolean)
+  @UseMiddleware(isAuth)
+  async vote(
+    @Arg("productId", () => Int) productId: number,
+    @Arg("value", () => Boolean) value: boolean,
+    @Ctx() { req }: MyContext
+  ) {
+    const { userId } = req.session;
+
+    const voted = await Upboat.findOne({
+      where: { productId: productId, userId },
+    });
+
+    // the user has voted on the post before
+    // and they are changing their vote
+    if (voted && voted.value !== value) {
+      await getConnection().transaction(async (tm) => {
+        await tm.query(
+          `
+    update upboat
+    set value = $1
+    where "productId" = $2 and "userId" = $3
+        `,
+          [value, productId, userId]
+        );
+
+        if (value) {
+          await tm.query(
+            `
+          update product
+          set points = points + 1,
+          "downPoints" = "downPoints" - 1
+          where id = $1
+        `,
+            [productId]
+          );
+        } else {
+          await tm.query(
+            `
+            update product
+            set points = points - 1,
+            "downPoints" = "downPoints" + 1
+            where id = $1
+          `,
+            [productId]
+          );
+        }
+      });
+    } else if (!voted) {
+      // has never voted before
+      await getConnection().transaction(async (tm) => {
+        await tm.query(
+          `
+    insert into upboat ("userId", "productId", value)
+    values ($1, $2, $3)
+        `,
+          [userId, productId, value]
+        );
+
+        if (value) {
+          await tm.query(
+            `
+          update product
+          set points = points + 1          
+          where id = $1
+        `,
+            [productId]
+          );
+        } else {
+          await tm.query(
+            `
+            update product
+            set "downPoints" = "downPoints" + 1
+            where id = $1
+          `,
+            [productId]
+          );
+        }
+      });
+    }
+    return true;
+  }
+
   @Query(() => Int)
   async countProducts(): Promise<Number> {
-    const {count} = await getConnection()
+    const { count } = await getConnection()
       .getRepository(Product)
-      .createQueryBuilder("products")
+      .createQueryBuilder("p")
       .select("count(*)", "count")
-      .getRawOne();      
+      .where("p.status = :status", { status: "Active" })
+      .getRawOne();
 
-      if (count){
-        return count
-      }
+    if (count) {
+      return count;
+    }
 
     return 0;
+  }
+
+  @Query(() => PaginatedProducts)
+  async getProducts(
+    @Arg("limit", () => Int) limit: number,
+    @Arg("cursor", () => String, { nullable: true }) cursor: string | null,
+    @Arg("vendorId", () => Int, { nullable: true }) vendorId?: number
+  ): Promise<PaginatedProducts> {
+    const realLimit = Math.min(50, limit);
+    const realLimitPlusOne = realLimit + 1;
+
+    let replacements: any[] = [realLimitPlusOne];
+    if (vendorId && cursor) {
+      replacements.push(new Date(parseInt(cursor)));
+      replacements.push(vendorId);
+    } else if (cursor) {
+      replacements.push(new Date(parseInt(cursor)));
+    } else if (vendorId) {
+      replacements.push(vendorId);
+    }
+
+    const products = await getConnection().query(
+      `
+      select p.*,
+        json_build_object(
+          'id', v.id,
+          'image', v.image,
+          'name', v.name
+        ) vendor,
+        jsonb_agg (json_build_object(
+          'id', i.id,
+          'url', i.url,
+          'productId', i."productId"
+        )) images
+      from product p
+        left join image i on i."productId" = p.id
+        left join vendor v on v.id = p."vendorId"
+        where p.status = 'Active'
+        ${cursor ? ` and  p."createdAt" < $2` : ""}
+        ${vendorId && cursor ? ` and  p."vendorId" = $3` : ""}
+        ${vendorId && !cursor ? ` and  p."vendorId" = $2` : ""}
+        group by p.id, v.id
+        order by p."createdAt" desc
+        limit $1
+
+      `,
+      replacements
+    );
+
+    return {
+      hasMore: products.length === realLimitPlusOne,
+      products: products.slice(0, realLimit),
+    };
   }
 
   @Query(() => [Product])
@@ -111,20 +260,20 @@ export class ProductResolver {
       .createQueryBuilder("p")
       .leftJoinAndSelect("p.images", "image")
       .leftJoinAndSelect("p.vendor", "vendor")
-      .orderBy("p.\"createdAt\"", "DESC")
+      .orderBy('p."createdAt"', "DESC")
       .limit(realLimit)
       .where("p.status = 'Active'");
     if (vendorId && cursor) {
-      qb.where('p."vendorId" = :vendorId', { vendorId: vendorId });
+      qb.andWhere('p."vendorId" = :vendorId', { vendorId: vendorId });
       qb.andWhere('p."createdAt" < :cursor', {
         cursor: new Date(parseInt(cursor)),
       });
     } else if (cursor) {
-      qb.where('p."createdAt" < :cursor', {
+      qb.andWhere('p."createdAt" < :cursor', {
         cursor: new Date(parseInt(cursor)),
       });
     } else if (vendorId) {
-      qb.where('p."vendorId" = :vendorId', { vendorId: vendorId });
+      qb.andWhere('p."vendorId" = :vendorId', { vendorId: vendorId });
     }
 
     return qb.getMany();
@@ -193,8 +342,6 @@ export class ProductResolver {
       tags: options.tags,
       vendorId: options.vendorId,
     }).save();
-
-    console.log(product);
 
     if (!product) {
       return {

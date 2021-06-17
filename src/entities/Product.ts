@@ -11,6 +11,7 @@ import {
 import { Field, ObjectType } from "type-graphql";
 import { Vendor } from "./Vendor";
 import { Image } from "./Image";
+import { Upboat } from "./Upboat";
 @ObjectType()
 @Entity()
 export class Product extends BaseEntity {
@@ -22,9 +23,13 @@ export class Product extends BaseEntity {
   @Column()
   title!: string;
 
-  @Field()
+  @Field({ nullable: true })
   @Column({ type: "int", default: 0 })
   points!: number;
+
+  @Field({ nullable: true })
+  @Column({ type: "int", default: 0 })
+  downPoints!: number;
 
   @Field({ nullable: true })
   @Column({ nullable: true })
@@ -83,6 +88,10 @@ export class Product extends BaseEntity {
     cascade: true,
   })
   images?: Image[];
+
+  @Field(() => [Upboat], {nullable: true})
+  @OneToMany(() => Upboat, (upboat) => upboat.product )
+  upboats?: Upboat[];
 
   @Field(() => String)
   @CreateDateColumn()

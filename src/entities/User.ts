@@ -5,10 +5,13 @@ import {
   PrimaryGeneratedColumn,
   Column,
   BaseEntity,
-  ManyToOne
+  ManyToOne,
+  OneToMany
 } from "typeorm";
 import { Field, ObjectType } from "type-graphql";
 import { Vendor } from "./Vendor";
+import { Product } from "./Product";
+import { Upboat } from "./Upboat";
 
 @ObjectType()
 @Entity()
@@ -54,4 +57,8 @@ export class User extends BaseEntity{
 
   @ManyToOne(() => Vendor, (vendor) => vendor.users)
   vendor: Vendor;
+
+  
+  @OneToMany(() => Upboat, (upboat) => upboat.user )
+  upboats?: Upboat[];
 }

@@ -18,7 +18,7 @@ export class Image extends BaseEntity {
   id!: number;
 
   @Field({nullable: true})
-  @Column({ unique: true })
+  @Column()
   url!: string;
 
   @Field({nullable: true})
