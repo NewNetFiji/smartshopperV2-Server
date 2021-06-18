@@ -2,12 +2,14 @@ import {
   Arg,
   Ctx,
   Field,
+  FieldResolver,
   InputType,
   Int,
   Mutation,
   ObjectType,
   Query,
   Resolver,
+  Root,
   UseMiddleware,
 } from "type-graphql";
 import { getConnection, getRepository } from "typeorm";
@@ -93,8 +95,26 @@ class ProductResponse {
   images?: Image[];
 }
 
-@Resolver()
+@Resolver(Product)
 export class ProductResolver {
+
+  @FieldResolver(() => Int, { nullable: true })
+  async voteStatus(
+    @Root() product: Product,
+    @Ctx() { upboatLoader, req }: MyContext
+  ) {
+    if (!req.session.userId) {
+      return null;
+    }
+
+    const upboat = await upboatLoader.load({
+      productId: product.id,
+      userId: req.session.userId,
+    });
+
+    return upboat ? upboat.value : null;
+  }
+
   @Mutation(() => Boolean)
   @UseMiddleware(isAuth)
   async vote(
@@ -225,7 +245,7 @@ export class ProductResolver {
           'id', i.id,
           'url', i.url,
           'productId', i."productId"
-        )) images
+        )) images        
       from product p
         left join image i on i."productId" = p.id
         left join vendor v on v.id = p."vendorId"

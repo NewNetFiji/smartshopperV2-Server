@@ -18,7 +18,8 @@ import { Vendor } from "./entities/Vendor";
 import { Image } from "./entities/Image";
 import { ImageResolver } from "./resolvers/image";
 import { Upboat } from "./entities/Upboat";
-
+import { createUserLoader } from "./utils/createUserLoader";
+import { createUpboatLoader } from "./utils/createUpboatLoader";
 
 const main = async () => {
   const conn = await createConnection({
@@ -29,8 +30,8 @@ const main = async () => {
     logging: true,
     synchronize: true,
     entities: [Product, User, Vendor, Image, Upboat],
-  })  
-  
+  });
+
   const app = express();
 
   const RedisStore = connectRedis(session);
@@ -64,10 +65,22 @@ const main = async () => {
 
   const apolloServer = new ApolloServer({
     schema: await buildSchema({
-      resolvers: [HelloResolver, ProductResolver, UserResolver, VendorResolver, ImageResolver],
+      resolvers: [
+        HelloResolver,
+        ProductResolver,
+        UserResolver,
+        VendorResolver,
+        ImageResolver,
+      ],
       validate: false,
     }),
-    context: ({ req, res }) => ({ req, res, redis }),
+    context: ({ req, res }) => ({
+      req,
+      res,
+      redis,
+      userLoader: createUserLoader(),
+      upboatLoader: createUpboatLoader(),
+    }),
   });
 
   apolloServer.applyMiddleware({

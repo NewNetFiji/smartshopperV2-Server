@@ -12,6 +12,7 @@ import { Field, ObjectType } from "type-graphql";
 import { Vendor } from "./Vendor";
 import { Product } from "./Product";
 import { Upboat } from "./Upboat";
+import { Order } from "./Order";
 
 @ObjectType()
 @Entity()
@@ -55,10 +56,15 @@ export class User extends BaseEntity{
   @Column()
   vendorId?: number;
 
+  @Field(() => [Order])
+  @ManyToOne(() => Order, (order) => order.user)
+  orders: Order[];
+
+  @Field(() => Vendor)
   @ManyToOne(() => Vendor, (vendor) => vendor.users)
   vendor: Vendor;
 
-  
+  @Field(() => [Upboat])
   @OneToMany(() => Upboat, (upboat) => upboat.user )
   upboats?: Upboat[];
 }

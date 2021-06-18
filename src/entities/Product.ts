@@ -12,6 +12,7 @@ import { Field, ObjectType } from "type-graphql";
 import { Vendor } from "./Vendor";
 import { Image } from "./Image";
 import { Upboat } from "./Upboat";
+import { Order } from "./Order";
 @ObjectType()
 @Entity()
 export class Product extends BaseEntity {
@@ -31,6 +32,9 @@ export class Product extends BaseEntity {
   @Column({ type: "int", default: 0 })
   downPoints!: number;
 
+  @Field(()=> Boolean, {nullable: true})
+  voteStatus: boolean | null
+
   @Field({ nullable: true })
   @Column({ nullable: true })
   description?: string;
@@ -43,8 +47,8 @@ export class Product extends BaseEntity {
   @Column({ nullable: true })
   productAvailableFrom?: Date;
 
-  @Field({ nullable: true })
-  @Column({ type: "decimal", nullable: true })
+  @Field()
+  @Column({ type: "decimal", default: 0 })
   basePrice!: number;
 
   @Field({ nullable: true })
@@ -81,7 +85,7 @@ export class Product extends BaseEntity {
 
   @Field(() => Vendor)
   @ManyToOne(() => Vendor, (vendor) => vendor.products)
-  vendor: Vendor;
+  vendor: Vendor;  
 
   @Field(() => [Image], {nullable: true})
   @OneToMany(() => Image, (image) => image.product, {
@@ -92,6 +96,10 @@ export class Product extends BaseEntity {
   @Field(() => [Upboat], {nullable: true})
   @OneToMany(() => Upboat, (upboat) => upboat.product )
   upboats?: Upboat[];
+
+  @Field(() => [Order])
+  @ManyToOne(() => Order, (order) => order.product)
+  orders: Order[];
 
   @Field(() => String)
   @CreateDateColumn()
