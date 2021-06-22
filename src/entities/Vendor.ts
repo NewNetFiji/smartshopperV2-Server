@@ -1,61 +1,97 @@
 import {
-    UpdateDateColumn,
-    CreateDateColumn,
-    Entity,
-    PrimaryGeneratedColumn,
-    Column,
-    BaseEntity,
-    OneToMany
-  } from "typeorm";
-  import { Field, ObjectType } from "type-graphql";
-  import {User} from "./User"
+  UpdateDateColumn,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  BaseEntity,
+  OneToMany,
+} from "typeorm";
+import { Field, ObjectType } from "type-graphql";
+import { User } from "./User";
 import { Product } from "./Product";
+import { Order } from "./Order";
+import { registerEnumType } from "type-graphql";
 
-  @ObjectType()
-  @Entity()
-  export class Vendor extends BaseEntity{
-    @Field()
-    @PrimaryGeneratedColumn()
-    id!: number;     
-  
-    @Field()
-    @Column({ unique: true })
-    name!: string;
-  
-    @Field()
-    @Column({ nullable: true })
-    address?: string;
-  
-    @Field()
-    @Column({ nullable: true })
-    tin?: string;
+export enum VendorStatus {
+  NEW = "New",
+  ACTIVE = "Active",
+  INACTIVE = "In-Active",
+  SUSPENDED = "Suspended",
+  DELETED = "Deleted",
+}
 
-    @Field()
-    @Column({ nullable: true })
-    image?: string;
-  
-    @Field()
-    @Column({ default: "Active" })
-    status?: string;
+export enum TypeOfVendor {
+  NEW = "New",
+  ADMIN = "Admin",
+  DISPLAY = "Display", //does not allow orders
+  TRADER = "Trader", //allows Orders
+  PUBLIC = "Public",
+}
 
-    //vendor type "Admin" can create sub-users through protal page addUser. 
-    //Users created through the Register front end page will be set to vendorType="Public" 
-    @Field()
-    @Column({ default: "Admin" })
-    vendorType?: string;
+registerEnumType(VendorStatus, {
+  name: "VendorStatus",
+  description: "Tracks the status of an vendor",
+});
 
-    @OneToMany(() => User, (user) => user.vendor)
-    users: User[];
+registerEnumType(TypeOfVendor, {
+  name: "TypeOfVendor",
+  description: "Type of vendor",
+});
 
-    @OneToMany(() => Product, (product) => product.vendor)
-    products: Product[];
+@ObjectType()
+@Entity()
+export class Vendor extends BaseEntity {
+  @Field()
+  @PrimaryGeneratedColumn()
+  id!: number;
 
-    @Field(() => String)
-    @CreateDateColumn()
-    createdAt: Date;
-  
-    @Field(() => String)
-    @UpdateDateColumn()
-    updatedAt: Date;   
-  }
-  
+  @Field()
+  @Column({ unique: true })
+  name!: string;
+
+  @Field()
+  @Column({ nullable: true })
+  address?: string;
+
+  @Field()
+  @Column({ nullable: true })
+  tin?: string;
+
+  @Field()
+  @Column({ nullable: true })
+  image?: string;
+
+  @Field(() => VendorStatus)
+  @Column({
+    type: "enum",
+    enum: VendorStatus,
+    default: VendorStatus.NEW,
+  })
+  status: VendorStatus;
+
+  @Field(() => TypeOfVendor)
+  @Column({
+    type: "enum",
+    enum: TypeOfVendor,
+    default: TypeOfVendor.NEW,
+  })
+  vendorType: TypeOfVendor;
+
+  @OneToMany(() => User, (user) => user.vendor)
+  users: User[];
+
+  @OneToMany(() => Product, (product) => product.vendor)
+  products: Product[];
+
+  @OneToMany(() => Order, (order) => order.vendor)
+  orders: Order[];
+
+  @Field(() => String)
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @Field(() => String)
+  @UpdateDateColumn()
+  updatedAt: Date;
+}

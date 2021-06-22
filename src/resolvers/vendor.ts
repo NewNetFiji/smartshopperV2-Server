@@ -6,9 +6,11 @@ import {
   ObjectType,
   Query,
   Resolver,
+  UseMiddleware,
 } from "type-graphql";
 import { getRepository } from "typeorm";
-import { Vendor } from "../entities/Vendor";
+import { TypeOfVendor, Vendor, VendorStatus } from "../entities/Vendor";
+import { isAuth } from "../middleware/isAuth";
 import { FieldError } from "./FieldError";
 
 @InputType()
@@ -29,10 +31,10 @@ class VendorInput {
   image?: string;
 
   @Field({ nullable: true })
-  status?: string;
+  status?: VendorStatus;
 
   @Field({ nullable: true })
-  vendorType?: string;
+  vendorType?: TypeOfVendor;
 
   @Field(() => String, { nullable: true })
   createdAt?: Date;
@@ -55,7 +57,7 @@ export class VendorResolver {
   
   @Query(() => Vendor , { nullable: true })
   async getPublicVendor(): Promise<Vendor | undefined> {
-    const vendor = await Vendor.findOne({ vendorType: "Public" });
+    const vendor = await Vendor.findOne({ vendorType: TypeOfVendor.PUBLIC });
     if (!vendor) {
       return undefined
     }
@@ -63,6 +65,7 @@ export class VendorResolver {
   }
 
   @Mutation(() => VendorResponse)
+  @UseMiddleware(isAuth)
   async registerVendor(
     @Arg("options", () => VendorInput) options: VendorInput
   ): Promise<VendorResponse> {
@@ -88,6 +91,7 @@ export class VendorResolver {
   }
 
   @Mutation(() => VendorResponse, { nullable: true }) //graphql type
+  @UseMiddleware(isAuth)
   async updateVendor(
     @Arg("options", () => VendorInput) options: VendorInput
   ): Promise<VendorResponse> {
@@ -128,12 +132,13 @@ export class VendorResolver {
   }
 
   @Mutation(() => Boolean, { nullable: true })
+  @UseMiddleware(isAuth)
   async deleteVendor(@Arg("id") id: number): Promise<Boolean> {
     const vendor = await Vendor.findOne(id);
     if (!vendor) {
       return false;
     } else {
-      vendor.status = "Deleted";
+      vendor.status = VendorStatus.DELETED;
       await Vendor.save(vendor);
       return true;
     }

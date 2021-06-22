@@ -14,7 +14,7 @@ import {
 } from "type-graphql";
 import { getConnection, getRepository } from "typeorm";
 import { Image } from "../entities/Image";
-import { Product } from "../entities/Product";
+import { Product, Status } from "../entities/Product";
 import { Upboat } from "../entities/Upboat";
 import { isAuth } from "../middleware/isAuth";
 import { MyContext } from "../types";
@@ -56,7 +56,7 @@ class ProductInput {
   category?: string;
 
   @Field({ nullable: true })
-  status?: string;
+  status?: Status;
 
   @Field({ nullable: true })
   manufacturer?: string;
@@ -97,7 +97,6 @@ class ProductResponse {
 
 @Resolver(Product)
 export class ProductResolver {
-
   @FieldResolver(() => Int, { nullable: true })
   async voteStatus(
     @Root() product: Product,
@@ -204,7 +203,7 @@ export class ProductResolver {
       .getRepository(Product)
       .createQueryBuilder("p")
       .select("count(*)", "count")
-      .where("p.status = :status", { status: "Active" })
+      .where("p.status in ('New', 'Active')")
       .getRawOne();
 
     if (count) {
@@ -249,7 +248,7 @@ export class ProductResolver {
       from product p
         left join image i on i."productId" = p.id
         left join vendor v on v.id = p."vendorId"
-        where p.status = 'Active'
+        where p.status in ('New', 'Active') 
         ${cursor ? ` and  p."createdAt" < $2` : ""}
         ${vendorId && cursor ? ` and  p."vendorId" = $3` : ""}
         ${vendorId && !cursor ? ` and  p."vendorId" = $2` : ""}
@@ -265,38 +264,6 @@ export class ProductResolver {
       hasMore: products.length === realLimitPlusOne,
       products: products.slice(0, realLimit),
     };
-  }
-
-  @Query(() => [Product])
-  async fullProducts(
-    @Arg("limit", () => Int) limit: number,
-    @Arg("cursor", () => String, { nullable: true }) cursor: string | null,
-    @Arg("vendorId", () => Int, { nullable: true }) vendorId?: number
-  ): Promise<Product[]> {
-    const realLimit = Math.min(50, limit);
-
-    const qb = getConnection()
-      .getRepository(Product)
-      .createQueryBuilder("p")
-      .leftJoinAndSelect("p.images", "image")
-      .leftJoinAndSelect("p.vendor", "vendor")
-      .orderBy('p."createdAt"', "DESC")
-      .limit(realLimit)
-      .where("p.status = 'Active'");
-    if (vendorId && cursor) {
-      qb.andWhere('p."vendorId" = :vendorId', { vendorId: vendorId });
-      qb.andWhere('p."createdAt" < :cursor', {
-        cursor: new Date(parseInt(cursor)),
-      });
-    } else if (cursor) {
-      qb.andWhere('p."createdAt" < :cursor', {
-        cursor: new Date(parseInt(cursor)),
-      });
-    } else if (vendorId) {
-      qb.andWhere('p."vendorId" = :vendorId', { vendorId: vendorId });
-    }
-
-    return qb.getMany();
   }
 
   @Query(() => [Product])
@@ -437,7 +404,7 @@ export class ProductResolver {
     if (!prod) {
       return false;
     } else {
-      prod.status = "Deleted";
+      prod.status = Status.DELETED;
       await Product.save(prod);
       return true;
     }

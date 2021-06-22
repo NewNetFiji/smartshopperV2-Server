@@ -6,17 +6,43 @@ import {
   Column,
   BaseEntity,
   ManyToOne,
-  OneToMany
+  OneToMany,
 } from "typeorm";
-import { Field, ObjectType } from "type-graphql";
+import { Field, Int, ObjectType, registerEnumType } from "type-graphql";
 import { Vendor } from "./Vendor";
-import { Product } from "./Product";
 import { Upboat } from "./Upboat";
 import { Order } from "./Order";
 
+
+export enum UserStatus {
+  NEW = "New",
+  ACTIVE = "Active",
+  INACTIVE = "In-Active",
+  SUSPENDED = "Suspended",
+  DELETED = "Deleted",
+}
+
+export enum UserRole {
+  GENERAL = "General",
+  ADMIN = "Admin",
+  GHOST = "Ghost",
+  SUPER = "Supervisor",
+  DATA = "Data Entry",
+}
+
+registerEnumType(UserStatus, {
+  name: "UserStatus",
+  description: "General Status Enum.",
+});
+
+registerEnumType(UserRole, {
+  name: "UserRole",
+  description: "User Role. duhh.",
+});
+
 @ObjectType()
 @Entity()
-export class User extends BaseEntity{
+export class User extends BaseEntity {
   @Field()
   @PrimaryGeneratedColumn()
   id!: number;
@@ -44,27 +70,45 @@ export class User extends BaseEntity{
   @Column({ nullable: true })
   lastName?: string;
 
-  @Field()
-  @Column({ default: "nonAdmin" })
-  userRole?: string;
+  @Field(() => [UserRole])
+  @Column({
+    array: true,
+    type: "enum",
+    enum: UserRole,
+    default: [UserRole.GENERAL],
+  })
+  roles: UserRole[];
 
-  @Field()
-  @Column({ default: "Active" })
-  status?: string;
+  @Field(() => UserStatus)
+  @Column({
+    
+    type: "enum",
+    enum: UserStatus,
+    default: UserStatus.NEW,
+  })
+  status: UserStatus;
 
-  @Field()
-  @Column()
-  vendorId?: number;
+  @Field(()=>Int)
+  @Column({ type: "int"})
+  vendorId: number;
 
   @Field(() => [Order])
-  @ManyToOne(() => Order, (order) => order.user)
-  orders: Order[];
+  @OneToMany(() => Order, (order) => order.customer)
+  ordersPlaced: Order[];
+
+  @Field(() => [Order])
+  @OneToMany(() => Order, (order) => order.creator)
+  ordersMade: Order[];
+
+  @Field(() => [Order])
+  @OneToMany(() => Order, (order) => order.updater)
+  ordersUpdated: Order[];
 
   @Field(() => Vendor)
   @ManyToOne(() => Vendor, (vendor) => vendor.users)
   vendor: Vendor;
 
   @Field(() => [Upboat])
-  @OneToMany(() => Upboat, (upboat) => upboat.user )
+  @OneToMany(() => Upboat, (upboat) => upboat.user)
   upboats?: Upboat[];
 }

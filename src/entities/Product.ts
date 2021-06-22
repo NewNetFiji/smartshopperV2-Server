@@ -1,18 +1,25 @@
+import { Field, Int, ObjectType, registerEnumType } from "type-graphql";
 import {
-  CreateDateColumn,
-  UpdateDateColumn,
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  BaseEntity,
-  ManyToOne,
-  OneToMany,
+  BaseEntity, Column, CreateDateColumn, Entity, ManyToOne,
+  OneToMany, PrimaryGeneratedColumn, UpdateDateColumn
 } from "typeorm";
-import { Field, ObjectType } from "type-graphql";
-import { Vendor } from "./Vendor";
 import { Image } from "./Image";
 import { Upboat } from "./Upboat";
-import { Order } from "./Order";
+import { Vendor } from "./Vendor";
+
+
+export enum Status {
+  NEW = "New",
+  ACTIVE = "Active",
+  INACTIVE = "In-Active",
+  SUSPENDED = "Suspended",
+  DELETED = "Deleted",
+}
+
+registerEnumType(Status, {
+  name: "Status",
+  description: "General Status Enum. Defined in Product entity.",
+});
 @ObjectType()
 @Entity()
 export class Product extends BaseEntity {
@@ -67,9 +74,13 @@ export class Product extends BaseEntity {
   @Column({ nullable: true })
   category?: string;
 
-  @Field()
-  @Column({ default: "Active" })
-  status!: string;
+  @Field(() => Status)
+  @Column({
+    type: "enum",
+    enum: Status,
+    default: Status.NEW,
+  })
+  status!: Status;
 
   @Field({ nullable: true })
   @Column({ nullable: true })
@@ -79,9 +90,9 @@ export class Product extends BaseEntity {
   @Column({ nullable: true })
   tags?: string;
 
-  @Field()
-  @Column()
-  vendorId?: number;
+  @Field(()=>Int)
+  @Column({ type: "int"})
+  vendorId: number;
 
   @Field(() => Vendor)
   @ManyToOne(() => Vendor, (vendor) => vendor.products)
@@ -96,10 +107,6 @@ export class Product extends BaseEntity {
   @Field(() => [Upboat], {nullable: true})
   @OneToMany(() => Upboat, (upboat) => upboat.product )
   upboats?: Upboat[];
-
-  @Field(() => [Order])
-  @ManyToOne(() => Order, (order) => order.product)
-  orders: Order[];
 
   @Field(() => String)
   @CreateDateColumn()

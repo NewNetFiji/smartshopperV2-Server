@@ -8,7 +8,7 @@ import {
   Query,
   Resolver,
 } from "type-graphql";
-import { User } from "../entities/User";
+import { User, UserStatus } from "../entities/User";
 import { MyContext } from "../types";
 import argon2id from "argon2";
 import { passwordStrength } from "check-password-strength";
@@ -109,8 +109,9 @@ export class UserResolver {
     await redis.del(key);
 
     //log in the user after succesful password change
-    req.session!.userId = user.id;
-    req.session!.vendorId = user.vendorId;
+    req.session.userId = user.id;
+    req.session.vendorId = user.vendorId;
+    req.session.userRole = user.roles;
 
     return { user };
   }
@@ -222,8 +223,9 @@ export class UserResolver {
       }
       console.error("Error Message: ", err.message);
     }
-    req.session!.userId = user.id;
-    req.session!.vendorId = user.vendorId;
+    req.session.userId = user.id;
+    req.session.vendorId = user.vendorId;
+    req.session.userRole = user.roles;
     return { user };
   }
 
@@ -258,8 +260,9 @@ export class UserResolver {
       };
     }
 
-    req.session!.userId = user.id;
-    req.session!.vendorId = user.vendorId;
+    req.session.userId = user.id;
+    req.session.vendorId = user.vendorId ;
+    req.session.userRole = user.roles;
 
     return { user };
   }
@@ -285,7 +288,7 @@ export class UserResolver {
     if (!user) {
       return false;
     } else {
-      user.status = "Deleted";
+      user.status = UserStatus.DELETED;
       await User.save(user);
       return true;
     }

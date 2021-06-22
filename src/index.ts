@@ -18,8 +18,12 @@ import { Vendor } from "./entities/Vendor";
 import { Image } from "./entities/Image";
 import { ImageResolver } from "./resolvers/image";
 import { Upboat } from "./entities/Upboat";
-import { createUserLoader } from "./utils/createUserLoader";
-import { createUpboatLoader } from "./utils/createUpboatLoader";
+import { createUserLoader } from "./dataLoader/createUserLoader";
+import { createUpboatLoader } from "./dataLoader/createUpboatLoader";
+import { Order } from "./entities/Order";
+import { Orderdetail } from "./entities/Orderdetail";
+import { authChecker } from "./utils/authChecker";
+import { OrderResolver } from "./resolvers/order";
 
 const main = async () => {
   const conn = await createConnection({
@@ -29,7 +33,7 @@ const main = async () => {
     password: "sparhawk32",
     logging: true,
     synchronize: true,
-    entities: [Product, User, Vendor, Image, Upboat],
+    entities: [Product, User, Vendor, Image, Upboat, Order, Orderdetail],
   });
 
   const app = express();
@@ -71,8 +75,9 @@ const main = async () => {
         UserResolver,
         VendorResolver,
         ImageResolver,
-      ],
-      validate: false,
+        OrderResolver
+      ], authChecker
+      ,validate: false,
     }),
     context: ({ req, res }) => ({
       req,
