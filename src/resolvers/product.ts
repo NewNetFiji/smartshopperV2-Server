@@ -1,5 +1,6 @@
 import {
   Arg,
+  Authorized,
   Ctx,
   Field,
   FieldResolver,
@@ -16,8 +17,10 @@ import { getConnection, getRepository } from "typeorm";
 import { Image } from "../entities/Image";
 import { Product, Status } from "../entities/Product";
 import { Upboat } from "../entities/Upboat";
+import { UserRole } from "../entities/User";
 import { isAuth } from "../middleware/isAuth";
 import { MyContext } from "../types";
+import {logger} from "../utils/logger"
 import { FieldError } from "./FieldError";
 
 @InputType()
@@ -97,6 +100,12 @@ class ProductResponse {
 
 @Resolver(Product)
 export class ProductResolver {
+
+  @FieldResolver(() => String, {nullable: true})
+  descSnippet(@Root() product: Product) {    
+    return product.description?.slice(0, 50);
+  }
+
   @FieldResolver(() => Int, { nullable: true })
   async voteStatus(
     @Root() product: Product,
@@ -198,13 +207,19 @@ export class ProductResolver {
   }
 
   @Query(() => Int)
-  async countProducts(): Promise<Number> {
-    const { count } = await getConnection()
+  async countProducts(
+    @Arg("vendorId", () => Int, {nullable: true}) vendorId: number,
+  ): Promise<Number> {
+    const qb = await getConnection()
       .getRepository(Product)
       .createQueryBuilder("p")
       .select("count(*)", "count")
       .where("p.status in ('New', 'Active')")
-      .getRawOne();
+      {vendorId? qb.andWhere('"vendorId" = :vendorId', { vendorId: vendorId }): ''}
+      
+      const {count} = await qb.getRawOne();
+
+      console.log("count: ", count)
 
     if (count) {
       return count;
@@ -267,28 +282,17 @@ export class ProductResolver {
   }
 
   @Query(() => [Product])
-  async products(
-    @Arg("limit", () => Int) limit: number,
-    @Arg("cursor", () => String, { nullable: true }) cursor: string | null,
+  async products(    
     @Arg("vendorId", () => Int, { nullable: true }) vendorId?: number
   ): Promise<Product[]> {
-    const realLimit = Math.min(50, limit);
+    
 
     const qb = getConnection()
       .getRepository(Product)
-      .createQueryBuilder("products")
-      .orderBy('"createdAt"', "DESC")
-      .take(realLimit);
-    if (vendorId && cursor) {
-      qb.where('"vendorId" = :vendorId', { vendorId: vendorId });
-      qb.andWhere('"createdAt" < :cursor', {
-        cursor: new Date(parseInt(cursor)),
-      });
-    } else if (cursor) {
-      qb.where('"createdAt" < :cursor', { cursor: new Date(parseInt(cursor)) });
-    } else if (vendorId) {
-      qb.where('"vendorId" = :vendorId', { vendorId: vendorId });
-    }
+      .createQueryBuilder("p")
+      .where("p.status in ('New', 'Active')")
+      .orderBy('"createdAt"', "DESC")      
+      {vendorId? qb.andWhere('"vendorId" = :vendorId', { vendorId: vendorId }): ''}
 
     return qb.getMany();
   }
@@ -304,6 +308,7 @@ export class ProductResolver {
     @Arg("options", () => ProductInput) options: ProductInput
   ): Promise<ProductResponse> {
     if (!options.vendorId) {
+      logger.log('error', 'Mutation createProduct: %s', "A valid vendor Id must be supplied")
       return {
         errors: [
           {
@@ -314,7 +319,9 @@ export class ProductResolver {
       };
     }
 
-    const product = await Product.create({
+    let product = new Product
+    try {
+     product = await Product.create({
       title: options.title,
       description: options.description,
       productAvailableTo: options.productAvailableTo,
@@ -329,8 +336,12 @@ export class ProductResolver {
       tags: options.tags,
       vendorId: options.vendorId,
     }).save();
+  }catch(error){
+    logger.log('error', 'Mutation createProduct: %s', error)
+  }
 
     if (!product) {
+      
       return {
         errors: [
           {
@@ -359,14 +370,18 @@ export class ProductResolver {
     //return { product };
   }
 
-  @Mutation(() => ProductResponse, { nullable: true }) //graphql type
+  @Mutation(() => ProductResponse, { nullable: true }) 
+  @Authorized(UserRole.ADMIN, UserRole.DATA, UserRole.SUPER)
   async updateProduct(
-    @Arg("options", () => ProductInput) options: ProductInput
+    @Arg("options", () => ProductInput) options: ProductInput,
+    @Ctx() { req }: MyContext
   ): Promise<ProductResponse> {
     const prodRepository = getRepository(Product);
     const product = await prodRepository.findOne(options.id);
+    
     if (!product) {
-      return {
+      logger.log('error', 'Mutation updateProduct: %s', "Product ID no longer exists")
+      return {        
         errors: [
           {
             field: "id",
@@ -375,6 +390,19 @@ export class ProductResolver {
         ],
       };
     }
+
+    if (req.session.vendorId != product?.vendorId){
+      logger.log('error', 'Mutation updateProduct: %s', "vendor ID's do not match")
+      return {        
+        errors: [
+          {
+            field: "vendorId",
+            message: "You can only update your own companies products",
+          },
+        ],
+      };
+    }
+
 
     product.title = options.title || product.title;
     product.description = options.description || product.description;
@@ -398,9 +426,19 @@ export class ProductResolver {
   }
 
   @Mutation(() => Boolean, { nullable: true }) //graphql type
-  async deleteProduct(@Arg("id") id: number): Promise<Boolean> {
-    // return type typescript
+  @Authorized(UserRole.ADMIN, UserRole.DATA, UserRole.SUPER)
+  async deleteProduct(
+    @Arg("id") id: number,
+    @Ctx() { req }: MyContext
+    ): Promise<Boolean> {
+      
+
     const prod = await Product.findOne(id);
+    if (req.session.vendorId != prod?.vendorId){
+      logger.log('error', 'Mutation deleteProduct: %s', "vendor ID's do not match")
+      throw new Error ('Not Authorized!')
+    }
+
     if (!prod) {
       return false;
     } else {

@@ -63,24 +63,6 @@ class PaginatedOrders {
 }
 
 @ObjectType()
-class UpdateOrder {
-  @Field(() => OrderHeaderInput)
-  order: OrderHeaderInput;
-
-  @Field(() => [OrderDetailInput])
-  orderDetails: OrderDetailInput[];
-}
-
-@ObjectType()
-class UpdateOrderResponse {
-  @Field(() => [FieldError], { nullable: true })
-  errors?: FieldError[];
-
-  @Field(() => UpdateOrder, { nullable: true })
-  orders?: UpdateOrder;
-}
-
-@ObjectType()
 class OrderResponse {
   @Field(() => [FieldError], { nullable: true })
   errors?: FieldError[];

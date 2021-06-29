@@ -7,25 +7,27 @@ import Redis from "ioredis";
 import "reflect-metadata";
 import { buildSchema } from "type-graphql";
 import { createConnection } from "typeorm";
-import { Product } from "./entities/Product";
-import { User } from "./entities/User";
 import { COOKIE_NAME, __prod__ } from "./constants";
-import { HelloResolver } from "./resolvers/hello";
-import { ProductResolver } from "./resolvers/product";
-import { VendorResolver } from "./resolvers/vendor";
-import { UserResolver } from "./resolvers/user";
-import { Vendor } from "./entities/Vendor";
-import { Image } from "./entities/Image";
-import { ImageResolver } from "./resolvers/image";
-import { Upboat } from "./entities/Upboat";
-import { createUserLoader } from "./dataLoader/createUserLoader";
 import { createUpboatLoader } from "./dataLoader/createUpboatLoader";
+import { createUserLoader } from "./dataLoader/createUserLoader";
+import { Image } from "./entities/Image";
 import { Order } from "./entities/Order";
 import { Orderdetail } from "./entities/Orderdetail";
-import { authChecker } from "./utils/authChecker";
+import { Product } from "./entities/Product";
+import { Upboat } from "./entities/Upboat";
+import { User } from "./entities/User";
+import { Vendor } from "./entities/Vendor";
+import { ErrorInterceptor } from "./middleware/ErrorInterceptor";
+import { HelloResolver } from "./resolvers/hello";
+import { ImageResolver } from "./resolvers/image";
 import { OrderResolver } from "./resolvers/order";
+import { ProductResolver } from "./resolvers/product";
+import { UserResolver } from "./resolvers/user";
+import { VendorResolver } from "./resolvers/vendor";
+import { authChecker } from "./utils/authChecker";
 
 const main = async () => {
+  //@ts-ignore
   const conn = await createConnection({
     type: "postgres",
     database: "smartshopper2",
@@ -76,7 +78,9 @@ const main = async () => {
         VendorResolver,
         ImageResolver,
         OrderResolver
-      ], authChecker
+      ]
+      ,globalMiddlewares: [ErrorInterceptor]
+      ,authChecker
       ,validate: false,
     }),
     context: ({ req, res }) => ({

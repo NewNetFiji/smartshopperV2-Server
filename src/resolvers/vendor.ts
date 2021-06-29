@@ -2,6 +2,7 @@ import {
   Arg,
   Field,
   InputType,
+  Int,
   Mutation,
   ObjectType,
   Query,
@@ -54,6 +55,17 @@ class VendorResponse {
 
 @Resolver()
 export class VendorResolver {
+
+  @Query(() => Vendor , { nullable: true })
+  async vendor(
+    @Arg("id", () => Int) id: number
+  ): Promise<Vendor | undefined> {
+    const vendor = await Vendor.findOne({ id: id });
+    if (!vendor) {
+      return undefined
+    }
+    return vendor;
+  }
   
   @Query(() => Vendor , { nullable: true })
   async getPublicVendor(): Promise<Vendor | undefined> {
