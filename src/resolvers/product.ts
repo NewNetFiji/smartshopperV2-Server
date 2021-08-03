@@ -1,3 +1,4 @@
+import { lowerCase } from "lodash";
 import {
   Arg,
   Authorized,
@@ -231,8 +232,65 @@ export class ProductResolver {
   @Query(() => PaginatedProducts)
   async getProducts(
     @Arg("limit", () => Int) limit: number,
+    @Arg("cursor", () => String, { nullable: true }) cursor: string | null,    
+    @Arg("filterString", () => String, { nullable: true }) filterString?: string
+  ): Promise<PaginatedProducts> {
+    const realLimit = Math.min(50, limit);
+    const realLimitPlusOne = realLimit + 1;
+    const filterStr = lowerCase(filterString)
+
+    let replacements: any[] = [realLimitPlusOne];
+    if (filterStr && cursor) {
+      replacements.push(new Date(parseInt(cursor)));
+      replacements.push(filterStr);
+    } else if (cursor) {
+      replacements.push(new Date(parseInt(cursor)));
+    } else if (filterStr) {
+      replacements.push(filterStr);
+    }
+
+    const products = await getConnection().query(
+      `
+      SELECT p.*,
+        json_build_object(
+          'id', v.id,
+          'image', v.image,
+          'name', v.name
+        ) vendor,
+        jsonb_agg (json_build_object(
+          'id', i.id,
+          'url', i.url,
+          'productId', i."productId"
+        )) images        
+      
+        FROM product p
+        LEFT JOIN image i on i."productId" = p.id
+        LEFT JOIN vendor v on v.id = p."vendorId"
+        WHERE p.status in ('New', 'Active') 
+        ${cursor ? ` AND  p."createdAt" < $2` : ""}
+        ${filterString && cursor ? ` AND   POSITION($3 in lower(p.title)) > 0` : ""}
+        ${filterString && !cursor ? ` AND   POSITION($2 in lower(p.title)) > 0` : ""}
+        GROUP BY p.id, v.id
+        ORDER BY p."createdAt" DESC        
+        LIMIT $1
+
+      `,
+      replacements
+    );
+    
+    
+
+    return {
+      hasMore: products.length === realLimitPlusOne,
+      products: products.slice(0, realLimit),
+    };
+  }
+
+  @Query(() => PaginatedProducts)
+  async getVendorProducts(
+    @Arg("limit", () => Int) limit: number,
     @Arg("cursor", () => String, { nullable: true }) cursor: string | null,
-    @Arg("vendorId", () => Int, { nullable: true }) vendorId?: number
+    @Arg("vendorId", () => Int, { nullable: true }) vendorId?: number    
   ): Promise<PaginatedProducts> {
     const realLimit = Math.min(50, limit);
     const realLimitPlusOne = realLimit + 1;
@@ -268,12 +326,14 @@ export class ProductResolver {
         ${vendorId && cursor ? ` and  p."vendorId" = $3` : ""}
         ${vendorId && !cursor ? ` and  p."vendorId" = $2` : ""}
         group by p.id, v.id
-        order by p."createdAt" desc
+        order by p."createdAt" desc       
         limit $1
 
       `,
       replacements
     );
+    
+    
 
     return {
       hasMore: products.length === realLimitPlusOne,

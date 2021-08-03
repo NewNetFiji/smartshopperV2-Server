@@ -5,6 +5,7 @@ import express from "express";
 import session from "express-session";
 import Redis from "ioredis";
 import "reflect-metadata";
+import "dotenv-safe/config"
 import { buildSchema } from "type-graphql";
 import { createConnection } from "typeorm";
 import { COOKIE_NAME, __prod__ } from "./constants";
@@ -26,26 +27,25 @@ import { UserResolver } from "./resolvers/user";
 import { VendorResolver } from "./resolvers/vendor";
 import { authChecker } from "./utils/authChecker";
 
-const main = async () => {
-  //@ts-ignore
+const main = async () => {  
   const conn = await createConnection({
-    type: "postgres",
-    database: "smartshopper2",
-    username: "postgres",
-    password: "sparhawk32",
+    type: "postgres",    
+    url: process.env.DATABASE_URL,
     logging: true,
-    synchronize: true,
+    //synchronize: true,
     entities: [Product, User, Vendor, Image, Upboat, Order, Orderdetail],
   });
+  await conn.runMigrations();
 
   const app = express();
 
   const RedisStore = connectRedis(session);
-  const redis = new Redis();
+  const redis = new Redis(process.env.REDIS_URL);
 
+  app.set("trust proxy", 1);
   app.use(
     cors({
-      origin: "http://localhost:3000",
+      origin: process.env.CORS_ORIGIN,
       credentials: true,
     })
   );
@@ -64,7 +64,7 @@ const main = async () => {
         secure: __prod__, //cookie only works in https
       },
       saveUninitialized: false,
-      secret: "pajspdapoutljkdfsfvt34@",
+      secret: process.env.SESSION_SECRET,
       resave: false,
     })
   );
@@ -97,8 +97,8 @@ const main = async () => {
     cors: false,
   });
 
-  app.listen(4000, () => {
-    console.log("Server listening on localhost:4000");
+  app.listen(parseInt(process.env.PORT), () => {
+    console.log("Server listening on localhost: ", process.env.PORT);
   });
 };
 
